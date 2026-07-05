@@ -30,6 +30,15 @@ int main() {
         else if (command == "echo") {
             std::cout << argument << "\n";
         }
+        else if (command == "type") {
+            // Create functions to clean up future-mess inside type function
+            if (argument == "exit" || argument == "echo" || argument == "type") {
+                std::cout << argument << " is a shell builtin\n";
+            }
+            else {
+                std::cout << argument << ": not found\n";
+            }
+        }
         else{
         std::cout << input << ": command not found\n";
         }
