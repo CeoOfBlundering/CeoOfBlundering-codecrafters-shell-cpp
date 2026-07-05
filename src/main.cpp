@@ -14,8 +14,8 @@ int main() {
             break;
         }
 
-        if (input == "echo") {
-            std::cout << input << "\n";
+        if (input.substr(0,input.find(' ')) == "echo") {
+            std::cout << input.substr(input.find(' '), input.length()) << "\n";
             continue;
         }
 
