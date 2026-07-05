@@ -20,7 +20,7 @@ int main() {
         }
         else {
             command = input.substr(0, firstSpace);
-            message = input.substr(firstSpace);
+            message = input.substr(firstSpace+1);
         }
 
         // Command processing
