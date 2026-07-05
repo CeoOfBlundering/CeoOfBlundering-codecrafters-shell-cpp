@@ -8,14 +8,14 @@ int main() {
 
     while (true){
         std::cout << "$ ";
-        std::string input;
-        std::cin >> input;
+        std::string input, msg;
+        std::cin >> input >> msg;
         if (input == "exit") {
             break;
         }
 
-        if (input.substr(0,input.find(' ')) == "echo") {
-            std::cout << input.substr(input.find(' '), input.length()) << "\n";
+        if (input == "echo") {
+            std::cout << msg << "\n";
             continue;
         }
 
