@@ -6,7 +6,7 @@ int main() {
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
-    while (true){
+    while (true) {
         std::cout << "$ ";
         std::string input;
         std::cin >> input;
@@ -19,7 +19,7 @@ int main() {
         }
         else {
             command = input.substr(0, firstSpace);
-            message = input.substr(firstSpace+1);
+            message = input.substr(firstSpace);
         }
 
         if (command == "exit") {
@@ -30,7 +30,8 @@ int main() {
             std::cout << message << "\n";
             continue;
         }
-
+        else{
         std::cout << input << ": command not found\n";
+        }
     }
 }
