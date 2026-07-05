@@ -15,7 +15,6 @@ int main() {
         std::string command, message;
         if (firstSpace == std::string::npos) {
             command = input;
-            message = "";
         }
         else {
             command = input.substr(0, firstSpace);
@@ -25,10 +24,8 @@ int main() {
         if (command == "exit") {
             break;
         }
-
-        if (command == "echo") {
+        else if (command == "echo") {
             std::cout << message << "\n";
-            continue;
         }
         else{
         std::cout << input << ": command not found\n";
