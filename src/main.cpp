@@ -12,15 +12,15 @@ int main() {
         std::string input;
         std::getline(std::cin, input);
         size_t firstSpace = input.find(' ');
-        std::string command, message;
+        std::string command, argument;
 
-        // Parsing the input to split command and message
+        // Parsing the input to split command and argument
         if (firstSpace == std::string::npos) {
             command = input;
         }
         else {
             command = input.substr(0, firstSpace);
-            message = input.substr(firstSpace+1);
+            argument = input.substr(firstSpace+1);
         }
 
         // Command processing
@@ -28,7 +28,7 @@ int main() {
             break;
         }
         else if (command == "echo") {
-            std::cout << message << "\n";
+            std::cout << argument << "\n";
         }
         else{
         std::cout << input << ": command not found\n";
