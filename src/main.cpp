@@ -8,14 +8,26 @@ int main() {
 
     while (true){
         std::cout << "$ ";
-        std::string input, msg;
-        std::cin >> input >> msg;
-        if (input == "exit") {
+        std::string input;
+        std::cin >> input;
+        std::getline(std::cin, input);
+        size_t firstSpace = input.find(' ');
+        std::string command, message;
+        if (firstSpace == std::string::npos) {
+            command = input;
+            message = "";
+        }
+        else {
+            command = input.substr(0, firstSpace);
+            message = input.substr(firstSpace+1);
+        }
+
+        if (command == "exit") {
             break;
         }
 
-        if (input == "echo") {
-            std::cout << msg << "\n";
+        if (command == "echo") {
+            std::cout << message << "\n";
             continue;
         }
 
