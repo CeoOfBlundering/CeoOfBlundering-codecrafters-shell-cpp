@@ -7,12 +7,14 @@ int main() {
     std::cerr << std::unitbuf;
 
     while (true) {
+        // Taking inputs
         std::cout << "$ ";
         std::string input;
-        std::cin >> input;
         std::getline(std::cin, input);
         size_t firstSpace = input.find(' ');
         std::string command, message;
+
+        // Parsing the input to split command and message
         if (firstSpace == std::string::npos) {
             command = input;
         }
@@ -21,6 +23,7 @@ int main() {
             message = input.substr(firstSpace);
         }
 
+        // Command processing
         if (command == "exit") {
             break;
         }
