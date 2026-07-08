@@ -13,30 +13,40 @@
 namespace fs = std::filesystem;
 
 int main() {
-    // Flush after every std::cout / std:cerr
+    // Flush after every std::cout / std::cerr to prevent test timeout
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
     std::string input, command, argument;
-    std::string path = std::getenv("PATH");
+    const char* path_env = std::getenv("PATH");
+    std::string path = path_env ? path_env : "";
 
     while (true) {
-        // Taking inputs
         std::cout << "$ ";
-        std::getline(std::cin, input);
+        if (!std::getline(std::cin, input)) {
+            break;
+        }
+
+        // Strip carriage return if tests are running in a mixed OS environment (Gemini AI)
+        if (!input.empty() && input.back() == '\r') {
+            input.pop_back();
+        }
+
+        if (input.empty()) {
+            continue;
+        }
+
         size_t firstSpace = input.find(' ');
 
-        // Parsing the input to split command and argument
         if (firstSpace == std::string::npos) {
             command = input;
             argument = "";
         }
         else {
             command = input.substr(0, firstSpace);
-            argument = input.substr(firstSpace+1);
+            argument = input.substr(firstSpace + 1);
         }
 
-        // Command processing
         if (command == "exit") {
             break;
         }
@@ -44,58 +54,49 @@ int main() {
             std::cout << argument << "\n";
         }
         else if (command == "type") {
-            // Create functions to clean up future-mess inside type function
             if (argument == "exit" || argument == "echo" || argument == "type") {
                 std::cout << argument << " is a shell builtin\n";
             }
             else if (!path.empty()) {
-                if (argument == "exit" || argument == "echo" || argument == "type") {
-                    std::cout << argument << " is a shell builtin\n";
+                std::vector<std::string> paths;
+                size_t start = 0, end = 0;
+                while (start <= path.length()) {
+                    end = path.find(PATH_DELIMITER, start);
+                    if (end == std::string::npos)
+                        end = path.length();
+                    paths.push_back(path.substr(start, end - start));
+                    start = end + 1;
                 }
-                else if (!path.empty()) {
-                    std::vector<std::string> paths;
-                    size_t start = 0, end = 0;
-                    while (start <= path.length()) {
-                        end = path.find(PATH_DELIMITER, start);
-                        if (end == std::string::npos)
-                            end = path.length();
-                        paths.push_back(path.substr(start, end-start));
-                        start = end+1;
+
+                bool found = false;
+                for (const std::string& p : paths) {
+                    fs::path full_path = fs::path(p) / argument;
+
+                    if (!fs::exists(full_path) || !fs::is_regular_file(full_path)) {
+                        continue;
                     }
 
-                    bool found = false;
-                    for (const std::string& p : paths) {
-                        // Combine the folder path and the command name cleanly
-                        fs::path full_path = fs::path(p) / argument;
+                    fs::perms permissions = fs::status(full_path).permissions();
+                    fs::perms executable = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
 
-                        // Now check the complete file path, not just the parent directory
-                        if (!fs::exists(full_path) || !fs::is_regular_file(full_path)) {
-                            continue;
-                        }
-
-                        fs::perms permissions = fs::status(full_path).permissions();
-                        fs::perms executable = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
-
-                        if ((permissions & executable) != fs::perms::none) {
-                            // Added missing '\n' at the end of the match printout
-                            std::cout << argument << " is " << full_path.string() << "\n";
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    // If we ran through every directory in PATH and found nothing
-                    if (!found) {
-                        std::cout << argument << ": not found\n";
+                    if ((permissions & executable) != fs::perms::none) {
+                        std::cout << argument << " is " << full_path.generic_string() << "\n";
+                        found = true;
+                        break;
                     }
                 }
-                else {
+
+                if (!found) {
                     std::cout << argument << ": not found\n";
                 }
             }
-            else{
-                std::cout << input << ": command not found\n";
+            else {
+                std::cout << argument << ": not found\n";
             }
         }
+        else {
+            std::cout << command << ": command not found\n";
+        }
     }
+    return 0;
 }
