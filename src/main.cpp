@@ -29,6 +29,7 @@ int main() {
         // Parsing the input to split command and argument
         if (firstSpace == std::string::npos) {
             command = input;
+            argument = "";
         }
         else {
             command = input.substr(0, firstSpace);
@@ -48,34 +49,53 @@ int main() {
                 std::cout << argument << " is a shell builtin\n";
             }
             else if (!path.empty()) {
-                std::vector<std::string> paths;
-                size_t start = 0, end = 0;
-                while (start <= path.length()) {
-                    end = path.find(PATH_DELIMITER, start);
-                    if (end == std::string_view::npos)
-                        end = path.length();
-                    paths.push_back(path.substr(start, end-start));
-                    start = end+1;
+                if (argument == "exit" || argument == "echo" || argument == "type") {
+                    std::cout << argument << " is a shell builtin\n";
                 }
+                else if (!path.empty()) {
+                    std::vector<std::string> paths;
+                    size_t start = 0, end = 0;
+                    while (start <= path.length()) {
+                        end = path.find(PATH_DELIMITER, start);
+                        if (end == std::string::npos)
+                            end = path.length();
+                        paths.push_back(path.substr(start, end-start));
+                        start = end+1;
+                    }
 
-                for (std::string p : paths) {
-                    if (!fs::exists(p ) || !fs::is_regular_file(p)) {
-                        continue;
+                    bool found = false;
+                    for (const std::string& p : paths) {
+                        // Combine the folder path and the command name cleanly
+                        fs::path full_path = fs::path(p) / argument;
+
+                        // Now check the complete file path, not just the parent directory
+                        if (!fs::exists(full_path) || !fs::is_regular_file(full_path)) {
+                            continue;
+                        }
+
+                        fs::perms permissions = fs::status(full_path).permissions();
+                        fs::perms executable = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
+
+                        if ((permissions & executable) != fs::perms::none) {
+                            // Added missing '\n' at the end of the match printout
+                            std::cout << argument << " is " << full_path.string() << "\n";
+                            found = true;
+                            break;
+                        }
                     }
-                    fs::perms permissions = fs::status(p).permissions();
-                    fs::perms executable = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
-                    if ((permissions  & executable) != fs::perms::none) {
-                        std::cout << argument << " is " << p;
-                        break;
+
+                    // If we ran through every directory in PATH and found nothing
+                    if (!found) {
+                        std::cout << argument << ": not found\n";
                     }
                 }
+                else {
+                    std::cout << argument << ": not found\n";
+                }
             }
-            else {
-                std::cout << argument << ": not found\n";
+            else{
+                std::cout << input << ": command not found\n";
             }
-        }
-        else{
-        std::cout << input << ": command not found\n";
         }
     }
 }
