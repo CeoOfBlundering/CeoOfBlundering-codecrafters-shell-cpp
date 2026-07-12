@@ -1,17 +1,34 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <complex>
 #include <vector>
+#include <array>
 #include <filesystem>
 #include <cstdlib>
 
 #ifdef _WIN32
-    const char PATH_DELIMITER = ';';
+constexpr char PATH_DELIMITER = ';';
 #else
-    const char PATH_DELIMITER = ':';
+constexpr char PATH_DELIMITER = ':';
 #endif
 
 namespace fs = std::filesystem;
+constexpr std::array<std::string, 4> builtinCommands = {"exit", "echo", "type", "pwd"};
+
+void inputParse(const std::string &input, std::string &command, std::string &argument);
+void pathParse(std::string &path, std::vector<std::string> &paths);
+bool commandSearch(const std::vector<std::string> &paths, const std::string& arg, fs::path &full_path);
+int commandProcess(std::string &path, const std::string &input, const std::string &command, const std::string &argument);
+
+int exit();
+void echo(const std::string &argument);
+void type(std::string &path, const std::string &argument);
+void pwd();
+
+void executableSearch(std::string &path, const std::string &argument);
+void executableSearchAndRun(const std::string &input, const std::string &command, std::string &path);
+
 
 int main() {
     // Flush after every std::cout / std::cerr to prevent test timeout
@@ -39,101 +56,115 @@ int main() {
         }
 
         // Parse input
-        size_t firstSpace = input.find(' ');
-        if (firstSpace == std::string::npos) {
-            command = input;
-            argument = "";
-        }
-        else {
-            command = input.substr(0, firstSpace);
-            argument = input.substr(firstSpace + 1);
-        }
+        inputParse(input, command, argument);
 
         // Process Command
-        if (command == "exit") {
+        int returnCode = commandProcess(path, input, command, argument);
+        if (returnCode == -1)
             break;
-        }
-        else if (command == "echo") {
-            std::cout << argument << "\n";
-        }
-        else if (command == "type") {
-            if (argument == "exit" || argument == "echo" || argument == "type") {
-                std::cout << argument << " is a shell builtin\n";
-            }
-            else if (!path.empty()) {
-                std::vector<std::string> paths;
-                size_t start = 0, end = 0;
-                while (start <= path.length()) {
-                    end = path.find(PATH_DELIMITER, start);
-                    if (end == std::string::npos)
-                        end = path.length();
-                    paths.push_back(path.substr(start, end - start));
-                    start = end + 1;
-                }
-
-                bool found = false;
-                for (const std::string& p : paths) {
-                    fs::path full_path = fs::path(p) / argument;
-
-                    if (!fs::exists(full_path) || !fs::is_regular_file(full_path)) {
-                        continue;
-                    }
-
-                    fs::perms permissions = fs::status(full_path).permissions();
-                    fs::perms executable = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
-
-                    if ((permissions & executable) != fs::perms::none) {
-                        std::cout << argument << " is " << full_path.generic_string() << "\n";
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    std::cout << argument << ": not found\n";
-                }
-            }
-            else {
-
-                std::cout << argument << ": not found\n";
-            }
-        }
-        else {
-            if (!path.empty()) {
-                std::vector<std::string> paths;
-                size_t start = 0, end = 0;
-                while (start <= path.length()) {
-                    end = path.find(PATH_DELIMITER, start);
-                    if (end == std::string::npos)
-                        end = path.length();
-                    paths.push_back(path.substr(start, end - start));
-                    start = end + 1;
-                }
-                bool found = false;
-                for (const std::string& p : paths) {
-                    fs::path full_path = fs::path(p) / command;
-
-                    if (!fs::exists(full_path) || !fs::is_regular_file(full_path)) {
-                        continue;
-                    }
-
-                    fs::perms permissions = fs::status(full_path).permissions();
-                    fs::perms executable = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
-
-                    if ((permissions & executable) != fs::perms::none) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (found) {
-                    std::system(input.c_str());
-                }
-                else
-                    std::cout << command << ": command not found\n";
-            }
-            else
-                std::cout << command << ": command not found\n";
-        }
     }
     return 0;
+}
+
+void inputParse(const std::string &input, std::string &command, std::string &argument) {
+    if (size_t firstSpace = input.find(' '); firstSpace == std::string::npos) {
+        command = input;
+        argument = "";
+    }
+    else {
+        command = input.substr(0, firstSpace);
+        argument = input.substr(firstSpace + 1);
+    }
+}
+void pathParse(std::string &path, std::vector<std::string> &paths) {
+    // Split the paths and put into vector
+    size_t start = 0, end = 0;
+    while (start <= path.length()) {
+        end = path.find(PATH_DELIMITER, start);
+        if (end == std::string::npos)
+            end = path.length();
+        paths.push_back(path.substr(start, end - start));
+        start = end + 1;
+    }
+}
+bool commandSearch(const std::vector<std::string> &paths, const std::string& arg, fs::path &full_path) {
+    bool found = false;
+    for (const std::string& p : paths) {
+        full_path = fs::path(p) / arg;
+
+        if (!fs::exists(full_path) || !fs::is_regular_file(full_path)) {
+            continue;
+        }
+
+        fs::perms permissions = fs::status(full_path).permissions();
+        fs::perms executable = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
+
+        if ((permissions & executable) != fs::perms::none) {
+            found = true;
+            break;
+        }
+    }
+    return found;
+}
+
+int exit() {
+    return -1;
+}
+void echo(const std::string &argument) {
+    std::cout << argument << "\n";
+}
+void type(std::string &path, const std::string &argument) {
+    if (std::ranges::contains(builtinCommands, argument)) {
+        std::cout << argument << " is a shell builtin\n";
+    }
+    else if (!path.empty()) {
+        executableSearch(path, argument);
+    }
+    else {
+        std::cout << argument << ": not found\n";
+    }
+}
+void pwd() {
+    std::cout << fs::current_path().string() << "\n";
+}
+
+void executableSearch(std::string &path, const std::string &argument) {
+    std::vector<std::string> paths;
+    pathParse(path, paths);
+    if (fs::path full_path; commandSearch(paths, argument, full_path))
+        std::cout << argument << " is " << full_path.generic_string() << "\n";
+    else
+        std::cout << argument << ": not found\n";
+}
+void executableSearchAndRun(const std::string &input, const std::string &command, std::string &path) {
+    std::vector<std::string> paths;
+    pathParse(path, paths);
+    if (fs::path full_path; commandSearch(paths, command, full_path)) {
+        std::system(input.c_str());
+    }
+    else
+        std::cout << command << ": command not found\n";
+}
+
+int commandProcess(std::string &path, const std::string &input, const std::string &command, const std::string &argument) {
+    if (command == "exit") {
+        return exit();
+    }
+    else if (command == "echo") {
+        echo(argument);
+    }
+    else if (command == "type") {
+        type(path, argument);
+    }
+    else if (command == "pwd") {
+        pwd();
+    }
+    else {
+        if (!path.empty()) {
+            executableSearchAndRun(input, command, path);
+        }
+        else
+            std::cout << command << ": command not found\n";
+    }
+    return 1;
 }
