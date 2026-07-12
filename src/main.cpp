@@ -31,15 +31,20 @@ void cd(const std::string &p, std::error_code &ec) noexcept;
 void executableSearch(std::string &path, const std::string &argument);
 void executableSearchAndRun(const std::string &input, const std::string &command, std::string &path);
 
+std::string input, command, argument;
+std::string envPath;
+std::string homePath;
 
 int main() {
     // Flush after every std::cout / std::cerr to prevent test timeout
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
-    std::string input, command, argument;
     const char* path_env = std::getenv("PATH");
-    std::string envPath = path_env ? path_env : "";
+    envPath = path_env ? path_env : "";
+
+    const char* homeDir = std::getenv("HOME");
+    homePath = homeDir ?  homeDir : "";
 
     while (true) {
         // Get Input
@@ -134,7 +139,14 @@ void cd(std::string &p) {
     cd(p, ec);
 }
 void cd(const std::string &p, std::error_code &ec) noexcept {
-    if (fs::is_directory(p)) {
+    if (p == "HOME" || p == "~") {
+        fs::path temp = fs::current_path();
+        fs::current_path(homePath, ec);
+        if (ec) {
+            fs::current_path(temp);
+        }
+    }
+    else if (fs::is_directory(p)) {
         fs::path temp = fs::current_path();
         fs::current_path(p, ec);
         if (ec) {
@@ -144,6 +156,7 @@ void cd(const std::string &p, std::error_code &ec) noexcept {
     else {
         std::cout << "cd: " << p << ": No such file or directory\n";
     }
+
 }
 
 void executableSearch(std::string &path, const std::string &argument) {
