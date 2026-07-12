@@ -14,17 +14,19 @@ constexpr char PATH_DELIMITER = ':';
 #endif
 
 namespace fs = std::filesystem;
-constexpr std::array<std::string, 4> builtinCommands = {"exit", "echo", "type", "pwd"};
+constexpr std::array<std::string, 5> builtinCommands = {"exit", "echo", "type", "pwd", "cd"};
 
 void inputParse(const std::string &input, std::string &command, std::string &argument);
 void pathParse(std::string &path, std::vector<std::string> &paths);
 bool commandSearch(const std::vector<std::string> &paths, const std::string& arg, fs::path &full_path);
-int commandProcess(std::string &path, const std::string &input, const std::string &command, const std::string &argument);
+int commandProcess(std::string &path, const std::string &input, const std::string &command, std::string &argument);
 
 int exit();
 void echo(const std::string &argument);
 void type(std::string &path, const std::string &argument);
 void pwd();
+void cd(std::string &p);
+void cd(const std::string &p, std::error_code &ec) noexcept;
 
 void executableSearch(std::string &path, const std::string &argument);
 void executableSearchAndRun(const std::string &input, const std::string &command, std::string &path);
@@ -37,7 +39,7 @@ int main() {
 
     std::string input, command, argument;
     const char* path_env = std::getenv("PATH");
-    std::string path = path_env ? path_env : "";
+    std::string envPath = path_env ? path_env : "";
 
     while (true) {
         // Get Input
@@ -59,7 +61,7 @@ int main() {
         inputParse(input, command, argument);
 
         // Process Command
-        int returnCode = commandProcess(path, input, command, argument);
+        int returnCode = commandProcess(envPath, input, command, argument);
         if (returnCode == -1)
             break;
     }
@@ -127,6 +129,22 @@ void type(std::string &path, const std::string &argument) {
 void pwd() {
     std::cout << fs::current_path().string() << "\n";
 }
+void cd(std::string &p) {
+    std::error_code ec;
+    cd(p, ec);
+}
+void cd(const std::string &p, std::error_code &ec) noexcept {
+    if (fs::is_directory(p)) {
+        fs::path temp = fs::current_path();
+        fs::current_path(p, ec);
+        if (ec) {
+            fs::current_path(temp);
+        }
+    }
+    else {
+        std::cout << "cd: " << p << ": No such file or directory\n";
+    }
+}
 
 void executableSearch(std::string &path, const std::string &argument) {
     std::vector<std::string> paths;
@@ -146,7 +164,7 @@ void executableSearchAndRun(const std::string &input, const std::string &command
         std::cout << command << ": command not found\n";
 }
 
-int commandProcess(std::string &path, const std::string &input, const std::string &command, const std::string &argument) {
+int commandProcess(std::string &path, const std::string &input, const std::string &command, std::string &argument) {
     if (command == "exit") {
         return exit();
     }
@@ -158,6 +176,9 @@ int commandProcess(std::string &path, const std::string &input, const std::strin
     }
     else if (command == "pwd") {
         pwd();
+    }
+    else if (command == "cd") {
+        cd(argument);
     }
     else {
         if (!path.empty()) {
